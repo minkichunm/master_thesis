@@ -1,8 +1,9 @@
 import tensorflow as tf
 import numpy as np
 
-
-def calculate_histogram_range(variables, scale = 2):
+#     To estimate the histogram, we first remove outliers in the
+# activations if the samples are outside the range [μ−3σ; μ+3σ]
+def calculate_histogram_range(variables, scale = 3):
     std = tf.math.reduce_variance(variables)**0.5
     if std==0.0:
         std = 1.0
@@ -62,4 +63,4 @@ def test_histogram():
     visualize_histogram(variables)
 
 
-test_histogram()
+# test_histogram()

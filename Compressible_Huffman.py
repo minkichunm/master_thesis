@@ -5,17 +5,33 @@ import pickle
 
 from tensorflow import keras
 
+# new task 
+# one main jupyter notebook entroy -> saves model -> load model
+
+# two jupyter notebook
+# one of them saves model with two files weights, codec
+# one of them loads model
+# save an object itself ( everything )
+
+# x axis model size
+# y accuracy
+# fig 7
+# ramda if too high too compress
+
+# CNN
+# benchmark
+
 class CompressibleNN(keras.Model):
     def __init__(self, net_model):
         super(CompressibleNN, self).__init__()
         self.net_model = net_model
         self.codec = []
+#         self.CompressibleNN
 
-    def compressNN(self, inputs):
+    def compressNN(self):
         # Reshape the weights
-        reshaped_weights = self.reshape_weights(inputs)
-#         print(len(reshaped_weights))
-
+        reshaped_weights = self.reshape_weights()
+        
         # Compress the weights using Huffman coding
         compressed_weights = []
         for i, weight_tensor in enumerate(reshaped_weights):
@@ -25,10 +41,6 @@ class CompressibleNN(keras.Model):
             self.codec.append(encoder) 
             compressed_data = encoder.encode(weight_bytes)  # Use encode() with byte array
             compressed_weights.append(compressed_data)
-            print("Weight tensor shape:", weight_tensor.shape)
-            print("Weight tensor size:", weight_tensor.size)
-            print("Weight flattened size:", weight_flattened.size)
-            print("Compressed data size:", len(compressed_data))
         
         # Save the weights to a file
         with open('compressed_model_weights.pkl', 'wb') as file:
@@ -44,19 +56,8 @@ class CompressibleNN(keras.Model):
             decoder = self.codec[i]
             decompressed_data = decoder.decode(compressed_data)  # Use decode() directly
 
-            print("Decompressed data size:", len(decompressed_data))
             weight_shape = self.net_model.get_weights()[i].shape  # Retrieve the shape of the corresponding weight tensor
-            decompressed_size = np.prod(weight_shape) * np.dtype(np.float32).itemsize
-
-            print("Expected decompressed size:", decompressed_size)
-            print("Actual decompressed size:", len(decompressed_data))
-
-            if len(decompressed_data) < decompressed_size:
-                decompressed_data += b'\x00' * (decompressed_size - len(decompressed_data))
-
-            elif len(decompressed_data) > decompressed_size:
-                decompressed_data = decompressed_data[:decompressed_size]
-
+            
             decompressed_array = np.frombuffer(bytes(decompressed_data), dtype=np.float32)
             decompressed_weights.append(decompressed_array.reshape(weight_shape))
 
@@ -65,15 +66,13 @@ class CompressibleNN(keras.Model):
     def call(self, inputs):
         return self.net_model(inputs)
 
-    def reshape_weights(self, inputs):
+    def reshape_weights(self):
         reshaped_weights = []
-        current_index = 0
         for weight_tensor in self.net_model.get_weights():
             weight_shape = weight_tensor.shape
             weight_size = np.prod(weight_shape)
             # Reshape the weight tensor based on the size of the input array
             reshaped_weights.append(weight_tensor.reshape(weight_shape))
-            current_index += weight_size
         return reshaped_weights
     
     def compare_weights(self, original_weights, decompressed_weights):
