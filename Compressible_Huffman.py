@@ -5,22 +5,6 @@ import pickle
 
 from tensorflow import keras
 
-# new task 
-# one main jupyter notebook entroy -> saves model -> load model
-
-# two jupyter notebook
-# one of them saves model with two files weights, codec
-# one of them loads model
-# save an object itself ( everything )
-
-# x axis model size
-# y accuracy
-# fig 7
-# ramda if too high too compress
-
-# CNN
-# benchmark
-
 class CompressibleNN(keras.Model):
     def __init__(self, net_model):
         super(CompressibleNN, self).__init__()
@@ -41,11 +25,7 @@ class CompressibleNN(keras.Model):
             self.codec.append(encoder) 
             compressed_data = encoder.encode(weight_bytes)  # Use encode() with byte array
             compressed_weights.append(compressed_data)
-        
-        # Save the weights to a file
-        with open('compressed_model_weights.pkl', 'wb') as file:
-            pickle.dump(compressed_weights, file)
-        
+            
         return compressed_weights
 
 
@@ -84,3 +64,13 @@ class CompressibleNN(keras.Model):
             diff = np.abs(orig - decomp_reshaped)
             differences.append(diff)
         return differences
+    
+    def save(self, filepath):
+        with open(filepath, 'wb') as file:
+            pickle.dump(self, file)
+
+    @classmethod
+    def load(cls, filepath):
+        with open(filepath, 'rb') as file:
+            net_model = pickle.load(file)
+        return cls(net_model)
