@@ -63,22 +63,13 @@ class Huffman(keras.Model):
             differences.append(diff)
         return differences
     
-#     def save(self, filepath):
-#         with open(filepath, 'wb') as file:
-#             pickle.dump(self, file)
-#         self.net_model.save(filepath)        
+    def save(self, filepath):
+        with open(filepath, 'wb') as file:
+            pickle.dump(self, file)
+        self.net_model.save(filepath)        
 
-#     @classmethod
-#     def load(cls, filepath):
-#         with open(filepath, 'rb') as file:
-#             net_model = pickle.load(file)
-#         return cls(net_model)
-    
-#     WARNING:tensorflow:Model's `__init__()` arguments contain non-serializable objects. Please implement a `get_config()` method in the subclassed Model for proper saving and loading. Defaulting to empty config.
-#     def get_config(self):
-#         # Return a dictionary with the configuration
-#         config = super(Huffman, self).get_config()
-#         # Add any non-serializable objects to the config dictionary
-#         config['custom_object'] = self.net_model  # Replace with your custom object
-#         return config
-    
+    @classmethod
+    def load(cls, filepath):
+        with open(filepath, 'rb') as file:
+            net_model = pickle.load(file)
+        return cls(net_model)
