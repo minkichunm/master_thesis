@@ -17,7 +17,7 @@ def calculate_entropy(variables, eps=1e-10):
 
 def calc_sparsity_regularization(inputs):
     abs_inputs = tf.abs(inputs)
-    regularization_loss = tf.reduce_sum(abs_inputs)
+    regularization_loss = tf.reduce_sum(abs_inputs) 
     
     return regularization_loss
 

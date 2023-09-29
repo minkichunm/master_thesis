@@ -16,7 +16,6 @@ def get_simplemodel(channels=128):
     model = Model(inputs, output)
     return model
 
-# Generate a complex NN model
 def get_model(chs=128):
     shape=(32, 32, 3)
     
@@ -35,4 +34,40 @@ def get_model(chs=128):
 
     model = Model(inputs, output)
     return model
+
+def get_32model(chs=32):
+    shape=(32, 32, 3)
     
+    inputs = Input(shape)
+    layer = Conv2D(chs * 2, (3, 3), padding='same', kernel_initializer=kernel_initializer)(inputs)
+    layer = BatchNormalization()(layer)
+    layer = ReLU()(layer)
+    
+    layer = Conv2D(chs, (3, 3), padding='same', kernel_initializer=kernel_initializer)(layer)
+    layer = BatchNormalization()(layer)
+    layer = ReLU()(layer)
+    
+    layer = Flatten()(layer)
+
+    output = Dense(10, activation='linear', use_bias=True, kernel_initializer=kernel_initializer)(layer)
+
+    model = Model(inputs, output)
+    return model
+    
+def get_3model(chs=128):
+    shape = (32, 32, 3)
+
+    inputs = Input(shape)
+
+    # First convolutional layer
+    layer = Conv2D(chs * 2, (3, 3), padding='same', kernel_initializer=kernel_initializer)(inputs)
+    layer = BatchNormalization()(layer)
+    layer = ReLU()(layer)
+
+    # Flatten layer
+    layer = Flatten()(layer)
+
+    # Output layer
+    output = Dense(10, activation='linear', use_bias=True, kernel_initializer=kernel_initializer)(layer)
+
+    return Model(inputs, output)
