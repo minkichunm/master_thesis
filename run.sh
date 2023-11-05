@@ -35,10 +35,7 @@ python3 -m venv tf_env
 source tf_env/bin/activate
 
 python3 -m pip install --upgrade pip
-python3 -m pip install tensorflow==2.4
-python3 -m pip install pandas
-python3 -m pip install dahuffman
-
+python3 -m pip install tensorflow==2.4 pandas dahuffman scipy
 
 module load tensorrt/7.2.1.6-cuda-11.0
 module load cudnn/v8.0.5.39-prod-cuda-11.0
