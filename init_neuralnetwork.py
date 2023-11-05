@@ -65,7 +65,7 @@ class CompressibleNN(keras.Model):
             # compute the full loss including the cross entropy for classification and regularization for compression
             loss_cross_entropy= self.ce(labels, output)
             if self.regularization_coefficient > 0:
-                loss = loss_cross_entropy + self.regularization_coefficient * regularization_loss
+                loss = loss_cross_entropy + self.regularization_coefficient*regularization_loss
             else:
                 loss = loss_cross_entropy
             

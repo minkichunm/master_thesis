@@ -54,8 +54,18 @@ def compress_NN_param(options, x_train, y_train, x_test, y_test, train_generator
         compressibleNN_list.append(model_instance)
     
     # Train the model with the current hyperparameters
+    #optimizer = tf.optimizers.Adam(learning_rate=1e-4, beta_1=0.5, beta_2=.95)
+    optimizer = tf.optimizers.Adagrad(learning_rate=1e-4)
+    # Get the optimizer configuration as a dictionary
+    optimizer_config = optimizer.get_config()
+
+    # Convert the dictionary to a formatted string
+    optimizer_info = ", ".join(f"{key}={value}" for key, value in optimizer_config.items())
+
+    # Print the optimizer information in one line
+    print(f"Optimizer: {optimizer_info}")
+    
     for count, compressibleNN in enumerate(compressibleNN_list):
-        optimizer = tf.optimizers.Adam(learning_rate=1e-3, beta_1=0.9)
         compressibleNN.compile(optimizer,loss=keras.losses.SparseCategoricalCrossentropy(), metrics=['accuracy'])
 
         if options["load_model"]: # load the saved weights 
@@ -76,8 +86,8 @@ def compress_NN_param(options, x_train, y_train, x_test, y_test, train_generator
         val_loss_results.append(history.history['val_loss'])
     
         print(f"{compressibleNN.reg_type} {compressibleNN.regularization_coefficient} done")
-        print(history.history['val_accuracy'])
-        print(history.history.keys())
+        #print(history.history['val_accuracy'])
+        #print(history.history.keys())
     
     # Define the full path to the log file
     reg_filename = os.path.join(directory, "loss_logs.txt")
@@ -109,6 +119,7 @@ def compress_NN_param(options, x_train, y_train, x_test, y_test, train_generator
     options_filename = os.path.join(directory, "options_logs.txt")
     with open(options_filename, "a") as file:
         file.write(options_str + "\n")
+        file.write(json.dumps(optimizer_config) + "\n")  # Convert and write optimizer_config as JSON
 
     step = len(ce_loss_result) // len(coefficients)
 

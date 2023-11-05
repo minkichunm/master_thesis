@@ -4,8 +4,8 @@ from tensorflow import keras
 
 nbins = 256
 
-def calculate_entropy(variables, eps=1e-10):
-    min_h, max_h = calculate_histogram_range(variables)
+def calculate_entropy(variables, scale_outlier, eps=1e-10):
+    min_h, max_h = calculate_histogram_range(variables, scale_outlier)
     flat_vars = tf.reshape(variables, (-1,1))    
     hist = calculate_histogram(flat_vars, min_h, max_h)
     
@@ -23,7 +23,7 @@ def calc_sparsity_regularization(inputs):
 
 # To estimate the histogram, we first remove outliers in the
 # activations if the samples are outside the range [μ−3σ; μ+3σ]
-def calculate_histogram_range(variables, scale = 3):
+def calculate_histogram_range(variables, scale):
     std = tf.math.reduce_std(variables)
     condition = tf.reduce_all(tf.equal(std, 0.0))  # Check if all elements of std are equal to 0.0
     std = tf.cond(condition, lambda: 1.0, lambda: std)

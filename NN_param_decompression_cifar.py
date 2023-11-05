@@ -10,17 +10,22 @@ from tensorflow.keras.datasets import mnist
 import os
 import argparse
 import sys
+from utils import *
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 def __create_options():
     options = {
-        "directory_path": "results_",
+        "directory_path": "results/temp",
+        "dataset": "cifar",
     }
 
     DEBUG_MODE = 0
 
     p = argparse.ArgumentParser(description='Decompressing neural network parameter')
-    p.add_argument('-d', '--directory_path', type=str,
+    p.add_argument('-dir', '--directory_path', type=str,
                    help='Path to the output directory (default: "results_")')
+    p.add_argument('-ds', '--dataset', type=str,
+                   help='Choose dataset "mnist", "cifar","celeba","3d" (default: "cifar")')
                
     p.add_argument('-debug', '--debug', action='store_true',
                    help='Enable DEBUG MODE for debugging output')
@@ -29,6 +34,8 @@ def __create_options():
     
     if args.directory_path:
         options["directory_path"] = args.directory_path
+    if args.dataset:
+        options["dataset"] = args.dataset
         
     if args.debug:
         print(options)
@@ -40,14 +47,14 @@ options = __create_options()
 
 print("Decompression start")
 
-
-# Load the CompressibleNN instance
-
-directory = options["directory_path"]
+directory = "results/" + options["directory_path"]
+dataset = options["dataset"]
 compNN_list = []
 cnt = 0
 decompressed_weights_list = []
 
+
+# Load the CompressibleNN instance
 while True:
     # Check if the file exists
     filename = f'{directory}/compressed_nn_{cnt}.pkl'
@@ -84,30 +91,57 @@ for cnt, compNN in enumerate(compNN_list):
         
     differences = compNN.compare_weights(original_model_weights_list[cnt], decompressed_weights_list[cnt])
 
-    print(f"Differences between original and decompressed weights in model{cnt}:")
-    for i, diff in enumerate(differences):
-        print(f"Layer {i+1}: Max Difference = {np.max(diff)}, Mean Difference = {np.mean(diff)}")
-    print("-"*80)
+    #print(f"Differences between original and decompressed weights in model{cnt}:")
+    #for i, diff in enumerate(differences):
+    #    print(f"Layer {i+1}: Max Difference = {np.max(diff)}, Mean Difference = {np.mean(diff)}")
+    #print("-"*80)
 
 # set decompressed weights
 for compNN, decompressed_weights in zip(compNN_list, decompressed_weights_list):
     compNN.set_weights(decompressed_weights)
 
+# Load the dataset
+if dataset == "mnist":
+    (x_train, y_train), (x_test, y_test) = mnist.load_data()
+elif dataset == "cifar":
+    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+elif dataset == "celeba":
+    celeba_folder = 'celeba_dataset/'
+    train_samples = 100
+    validation_samples = 25
+    test_samples = 100
+    height = 218 
+    width = 178
+    input_shape = (height, width, 3)
+    df = pd.read_csv(celeba_folder+'list_attr_celeba.csv', index_col=0)
+    df_partition_data = pd.read_csv(celeba_folder+'list_eval_partition.csv')
+    df_partition_data.set_index('image_id', inplace=True)
+    df = df_partition_data.join(df['Male'], how='inner')
+    x_train, y_train = generate_df(0, 'Male', train_samples, df, celeba_folder)
+    datagen_train =  ImageDataGenerator(
+        rotation_range=30,
+        width_shift_range=0.2,
+        height_shift_range=0.2,
+        shear_range=0.2,
+        zoom_range=0.2,
+        horizontal_flip=True
+    )
 
-# Load the CIFAR dataset
-(x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
-#(x_train, y_train), (x_test, y_test) = mnist.load_data()
-image_size = x_train.shape[1] # 32
-input_size = image_size * image_size
-
-# Preprocess the data (reshape and normalize)
-#x_test = np.reshape(x_test, [-1, image_size, image_size, 1])  # mnist
-x_test = np.reshape(x_test, [-1, image_size, image_size, 3])  # cifar Keep the shape (None, 32, 32, 3)
-
+    x_test, y_test = generate_df(1, 'Male', validation_samples, df, celeba_folder)
+    # Preparing train data with data augmentation
+    datagen_val =  ImageDataGenerator(
+      rotation_range=30,
+      width_shift_range=0.2,
+      height_shift_range=0.2,
+      shear_range=0.2,
+      zoom_range=0.2,
+      horizontal_flip=True
+    )
+        
 # Reshape y_test to match the shape of predicted_labels using TensorFlow
 y_test_flat = tf.cast(tf.squeeze(y_test), tf.int64)
 
-results = []
+acc_results = []
 
 for cnt, compNN in enumerate(compNN_list): 
     # Make predictions using your model
@@ -118,17 +152,15 @@ for cnt, compNN in enumerate(compNN_list):
 
     top_1_accuracy = tf.reduce_mean(tf.cast(tf.equal(predicted_labels, y_test_flat), tf.float32)) * 100
 
-    print(f"Model{cnt} Top-1 Accuracy: {top_1_accuracy:.3f}%")
-    results.append(f"Model{cnt} Top-1 Accuracy: {top_1_accuracy:.3f}%")
+    print(f"Model{cnt} Top-1 Accuracy: {top_1_accuracy:.2f}%")
+    acc_results.append(f"{top_1_accuracy:.2f}")
 
 print("Save accuracy log file")
 # Define the full path to the log file
-log_filename = os.path.join(directory, "accuracy_logs.txt")
+log_filename = os.path.join(directory, "accuracy.txt")
 
 # Save the results to the file
-with open(log_filename, "a") as file:
-    for result_entry in results:
-        file.write(result_entry + "\n")
+write_to_file(log_filename, acc_results)
         
 print("Decompression done")
 

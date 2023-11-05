@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 import tensorflow as tf
+from tensorflow.keras.datasets import mnist, cifar10
+from getModel import *
 
 def write_data_to_file(filename, data_list, step):
     with open(filename, "a") as file:
@@ -22,6 +24,75 @@ def load_image(file_name):
     X = X.reshape((1,) + X.shape)
 
     return X
+
+def load_dataset(dataset=None, celeba_folder=None, train_samples=None, validation_samples=None, test_samples=None, batch_size=None):
+    print("Loading dataset start")
+    if dataset == "mnist":
+        (x_train, y_train), (x_test, y_test) = mnist.load_data()
+        train_generator = data_generator.flow(x_train, y_train, batch_size)
+        steps_per_epoch = x_train.shape[0] // batch_size
+        return x_train, y_train, x_test, y_test, train_generator, steps_per_epoch
+
+    elif dataset == "cifar":
+        (x_train, y_train), (x_test, y_test) = cifar10.load_data()
+        data_generator = tf.keras.preprocessing.image.ImageDataGenerator(width_shift_range=0.1, height_shift_range=0.1, horizontal_flip=True)
+        train_generator = data_generator.flow(x_train, y_train, batch_size)
+        steps_per_epoch = x_train.shape[0] // batch_size
+        return x_train, y_train, x_test, y_test, train_generator, steps_per_epoch
+
+    elif dataset == "celeba":
+        height = 218 
+        width = 178
+        input_shape = (height, width, 3)
+        df = pd.read_csv(celeba_folder+'list_attr_celeba.csv', index_col=0)
+        df_partition_data = pd.read_csv(celeba_folder+'list_eval_partition.csv')
+        df_partition_data.set_index('image_id', inplace=True)
+        df = df_partition_data.join(df['Male'], how='inner')
+        x_train, y_train = generate_df(0, 'Male', train_samples, df, celeba_folder)
+        steps_per_epoch = x_train.shape[0] // batch_size
+        train_generator = tf.keras.preprocessing.image.ImageDataGenerator(
+            rotation_range=30,
+            width_shift_range=0.2,
+            height_shift_range=0.2,
+            shear_range=0.2,
+            zoom_range=0.2,
+            horizontal_flip=True
+        )
+        
+        x_test, y_test = generate_df(1, 'Male', validation_samples, df, celeba_folder)
+        num_class = 1
+        return x_train, y_train, x_test, y_test, train_generator, steps_per_epoch
+    
+    else:
+        raise Exception(f"Error: Invalid dataset choice '{dataset}'. Please choose a valid dataset.")    
+    
+
+def load_model_function(selected_model):
+    model_functions = {
+        1: get_mobilenetv2,
+        2: get_resnet50,
+        3: get_mobilenetv3s,
+        4: get_simplemodel,
+        5: get_modified_model,
+        6: get_modified_model2,
+        7: get_modified_cifar10_model,
+        8: get_modified_cifar10_model2,
+        9: get_modified_cifar10_model3,
+        10: get_celeba_temp,
+        11: get_celeba_temp2,
+        12: get_modified_model3,
+        13: get_modified_cifar10_model4,
+    }
+    try:
+        if selected_model in model_functions:
+            model_function = model_functions[selected_model]
+        else:
+            raise Exception(f"Error: Invalid model choice '{selected_model}'. Please choose a valid model.")
+    except Exception as e:
+        print(str(e))
+        sys.exit(-1)
+
+    return model_function
     
 def generate_df(partition, attribute, nsamples, df, celeba_folder):
     images_folder = celeba_folder + 'img_align_celeba/'
@@ -45,3 +116,8 @@ def generate_df(partition, attribute, nsamples, df, celeba_folder):
             y.append(target[attribute])
         
     return X, y
+
+def format_time(seconds):
+    m, s = divmod(seconds, 60)
+    h, m = divmod(m, 60)
+    return f"{int(h):02d}:{int(m):02d}:{int(s):02d}"
