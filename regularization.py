@@ -9,7 +9,7 @@ def calculate_entropy(variables, scale_outlier, eps=1e-10):
     flat_vars = tf.reshape(variables, (-1,1))    
     hist = calculate_histogram(flat_vars, min_h, max_h)
     
-    probs = hist / tf.reduce_sum(hist) # divide by the number of activation samples in the current training batch
+    probs = hist / tf.reduce_sum(hist) # divide by the number of parameters samples in the current training batch
 
     entropy = -tf.reduce_sum(probs * tf.experimental.numpy.log2(probs+eps))
     
@@ -22,7 +22,7 @@ def calc_sparsity_regularization(inputs):
     return regularization_loss
 
 # To estimate the histogram, we first remove outliers in the
-# activations if the samples are outside the range [μ−3σ; μ+3σ]
+# parameters if the samples are outside the range [μ−3σ; μ+3σ]
 def calculate_histogram_range(variables, scale):
     std = tf.math.reduce_std(variables)
     condition = tf.reduce_all(tf.equal(std, 0.0))  # Check if all elements of std are equal to 0.0
@@ -35,11 +35,11 @@ def calculate_histogram_range(variables, scale):
 # min_h (float): The minimum value of the histogram bins.
 # max_h (float): The maximum value of the histogram bins.
 def calculate_weights(variables, min_h, max_h):
-    xk = tf.reshape(variables, [-1, 1])  # Reshape variables to a column vector (65536, 1)
+    xk = tf.reshape(variables, [-1, 1])  # Reshape variables to a column vector 
     t = tf.linspace(0, nbins - 1, nbins)
-    w = weight(xk, t, nbins) # (65536, 256)
+    w = weight(xk, t, nbins) 
     deltas = tf.reduce_sum(w, axis=0)  # Compute the sum along the first axis (j)
-    deltas = tf.reshape(deltas, (-1, 1)) # (256, 1)
+    deltas = tf.reshape(deltas, (-1, 1)) 
     
     return deltas
 
@@ -53,17 +53,17 @@ def weight(xk, t, nbins):
     return w
 
 def calculate_histogram(variables, min_h, max_h):
-    flat_vars = tf.reshape(variables, (-1,1)) # shape=(65536, 1)
+    flat_vars = tf.reshape(variables, (-1,1)) 
     scaled_vars = (flat_vars-min_h)*(nbins - 1)/(max_h-min_h)
     calc_w = calculate_weights(scaled_vars, min_h, max_h)
     
     return calc_w
 
 def visualize_histogram(variables):    
-    min_h, max_h = calculate_histogram_range(variables)
+    min_h, max_h = calculate_histogram_range(variables, scale = 3.0)
     our_hist = calculate_histogram(variables, min_h, max_h)
 
-    np_hist, _ = np.histogram(variables, bins=nbins, range=(min_h.numpy(), max_h.numpy())) # shape 256 * 257
+    np_hist, _ = np.histogram(variables, bins=nbins, range=(min_h.numpy(), max_h.numpy())) 
 
     from matplotlib import pyplot as plt
     plt.plot(np_hist, "-b", label="histogram using numpy")

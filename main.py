@@ -1,7 +1,7 @@
 from parser import __create_options
 from compression import compress_NN_param
 from decompression import decompress_NN_param
-from utils import load_dataset
+from utils import load_dataset, format_time
 import time
 
 if __name__ == "__main__":
