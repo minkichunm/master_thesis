@@ -59,7 +59,7 @@ def calculate_histogram(variables, min_h, max_h):
     
     return calc_w
 
-def visualize_histogram(variables):    
+def visualize_histogram_tent(variables):    
     min_h, max_h = calculate_histogram_range(variables, scale = 3.0)
     our_hist = calculate_histogram(variables, min_h, max_h)
 
@@ -74,8 +74,33 @@ def visualize_histogram(variables):
 
     plt.show()
     
-def test_histogram():
+def test_histogram_tent():
     variables = np.random.normal(size=(10000))
-    visualize_histogram(variables)
+    visualize_histogram_tent(variables)
 
-# test_histogram()
+def visualize_histogram_sparsity_comparison(variables):
+    min_h, max_h = calculate_histogram_range(variables, scale=3.0)
+    
+    # Calculate histogram using sparsity
+    our_hist_sparsity = calculate_histogram(variables, min_h, max_h)
+
+    # Calculate histogram using NumPy
+    np_hist, _ = np.histogram(variables, bins=nbins, range=(min_h.numpy(), max_h.numpy()))
+
+    # Calculate sparsity regularization loss
+    sparsity_loss = calc_sparsity_regularization(variables)
+
+    # Visualization
+    from matplotlib import pyplot as plt
+    plt.plot(np_hist, "-b", label="histogram using numpy")
+    plt.plot(our_hist_sparsity, "-r", label="histogram using sparsity (absolute values)")
+    plt.axvline(x=sparsity_loss, color='g', linestyle='--', label="sparsity regularization loss")
+    plt.legend(loc="upper left")
+
+    plt.title("Histogram and Sparsity Comparison between sparsity and Numpy")
+
+    plt.show()
+
+def test_histogram_sparsity_comparison():
+    variables = np.random.normal(size=(10000))
+    visualize_histogram_sparsity_comparison(variables)

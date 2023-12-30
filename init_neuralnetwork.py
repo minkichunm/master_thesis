@@ -5,7 +5,7 @@ from tensorflow.keras.models import Model
 import numpy as np
 from regularization import *
 
-accuracy_metric = tf.keras.metrics.Accuracy()
+#accuracy_metric = tf.keras.metrics.Accuracy()
 
 class CompressibleNN(keras.Model):
     def __init__(self, net_model, coeff, reg_type, scale_outlier):
@@ -15,10 +15,9 @@ class CompressibleNN(keras.Model):
         self.net_model = net_model
         self.regularization_coefficient = coeff
         self.reg_type = reg_type
-        #self.ce = keras.losses.categorical_crossentropy()
         self.ce = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
         self.scale_outlier = scale_outlier
-        accuracy_metric = tf.keras.metrics.Accuracy()
+        self.accuracy_metric = tf.keras.metrics.Accuracy()
 
     def call(self, inputs):
         return self.net_model(inputs)
@@ -69,10 +68,8 @@ class CompressibleNN(keras.Model):
             else:
                 loss = loss_cross_entropy
             
-            # Calculate accuracy
-            accuracy_metric.reset_states()
-            accuracy_metric.update_state(labels, tf.argmax(output, axis=1))  # Assuming it's a classification task
-            accuracy = accuracy_metric.result()
+            # Calculate accuracy within the graph
+            accuracy = self.update_accuracy(labels, output)
             
         # Get the gradients w.r.t the loss
         gradient = tape.gradient(loss, self.net_model.trainable_variables)
@@ -86,6 +83,14 @@ class CompressibleNN(keras.Model):
             "regularization_loss": regularization_loss,
             "accuracy": accuracy * 100
         }
+    
+    @tf.function
+    def update_accuracy(self, labels, predictions):
+        # Assuming accuracy_metric is an instance attribute
+        self.accuracy_metric.reset_states()
+        self.accuracy_metric.update_state(labels, tf.argmax(predictions, axis=1))  # Assuming it's a classification task
+        accuracy = self.accuracy_metric.result()
+        return accuracy
 
 
 

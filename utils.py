@@ -29,9 +29,9 @@ def load_dataset(dataset=None, celeba_folder=None, train_samples=None, validatio
     print("Loading dataset start")
     if dataset == "mnist":
         (x_train, y_train), (x_test, y_test) = mnist.load_data()
-        train_generator = data_generator.flow(x_train, y_train, batch_size)
+        
         steps_per_epoch = x_train.shape[0] // batch_size
-        return x_train, y_train, x_test, y_test, train_generator, steps_per_epoch
+        return x_train, y_train, x_test, y_test, (x_train, y_train), steps_per_epoch
 
     elif dataset == "cifar":
         (x_train, y_train), (x_test, y_test) = cifar10.load_data()
@@ -69,12 +69,12 @@ def load_dataset(dataset=None, celeba_folder=None, train_samples=None, validatio
 
 def load_model_function(selected_model):
     model_functions = {
-        1: get_mobilenetv2,
-        2: get_resnet50,
-        3: get_mobilenetv3s,
-        4: get_simplemodel,
-        5: get_modified_model,
-        6: get_modified_model2,
+        1: get_mobilenetv3s,
+        2: get_densenet121,
+        3: get_resnet50,
+        4: get_resnet50,
+        5: get_resnet50,
+        6: get_mobilenetv3s,
         7: get_modified_cifar10_model,
         8: get_modified_cifar10_model2,
         9: get_modified_cifar10_model3,
@@ -121,3 +121,16 @@ def format_time(seconds):
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
     return f"{int(h):02d}:{int(m):02d}:{int(s):02d}"
+    
+def scheduler(epoch):
+    if epoch < 100:
+        return 0.01
+    elif epoch < 150:
+        return 0.01 * 0.1
+    else:
+        return 0.01 * 0.1 * 0.1
+
+def representative_dataset_gen(train_images):
+    for input_value in tf.data.Dataset.from_tensor_slices(train_images).batch(1).take(100):
+    # Model has only one input so each data point has one element.
+        yield [input_value]

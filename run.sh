@@ -13,7 +13,7 @@
 #BSUB -W 24:00
 # request 5GB of system-memory
 #BSUB -R "select[gpu32gb]"
-#BSUB -R "rusage[mem=5GB]"
+#BSUB -R "rusage[mem=10GB]"
 ### -- set the email address --
 # please uncomment the following line and put in your e-mail address,
 # if you want to receive e-mail notifications on a non-default address
@@ -24,18 +24,17 @@
 #BSUB -N
 ### -- Specify the output and error file. %J is the job-id --
 ### -- -o and -e mean append, -oo and -eo mean overwrite --
-#BSUB -o %J.out
-#BSUB -e %J.err
+#BSUB -o logs/%J.out
+#BSUB -e logs/%J.err
 # -- end of LSF options --
 
 # Create a virtual environment
-python3 -m venv tf_env
+#python3 -m venv tf_env
 
 # Activate the virtual environment
-source tf_env/bin/activate
+#source tf_env/bin/activate
 
-python3 -m pip install --upgrade pip
-python3 -m pip install tensorflow==2.4 pandas dahuffman scipy
+#python3 -m pip install tensorflow==2.4 pandas dahuffman scipy
 
 module load tensorrt/7.2.1.6-cuda-11.0
 module load cudnn/v8.0.5.39-prod-cuda-11.0
@@ -61,7 +60,9 @@ echo /appl/cuda/10.1/samples/bin/x86_64/linux/release/bandwidthTest --device=$MY
 nvidia-smi
 nvidia-smi --query-gpu=memory.used,memory.total,utilization.gpu,temperature.gpu,name --format=csv,noheader,nounits
 
-python3 main.py -dir "mtest2" -ds "cifar" -e 500 -m 3 -type entropy -so 3 -coeff 0.0 10.0
+python3 main.py -dir "cifar_e3" -ds "cifar" -e 200 -m 3 -type entropy -so 3 -coeff 0.0 1.0 10.0
+#python3 main.py -dir "m3test9" -ds "cifar" -e 1000 -m 3 -type entropy -so 3 -coeff 0.0 5.0 50.0
+
 #python3 NN_param_compression_cifar.py  -dir "cifar_new3" -ds "cifar" -e 90 -m 13 -type entropy -so 3 -coeff 0.0 1e-3 1e-2 1e-1 0.5 1.0 5.0 10.0 100.0 1000.0
 #python3 NN_param_compression_cifar.py  -dir "cifar_new4" -ds "cifar" -e 150 -m 13 -type entropy -so 3 -coeff 0.0 1000.0 10000.0 1000000.0 100000000.0
 #python3 NN_param_decompression_cifar.py -dir "cifar_mobilnetv2" -ds "cifar"

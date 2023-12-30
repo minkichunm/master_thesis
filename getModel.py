@@ -1,6 +1,8 @@
 from tensorflow.keras.layers import Dense, Input, Flatten, Conv2D, BatchNormalization, ReLU, MaxPooling2D, Activation, Dropout, GlobalAveragePooling2D, GlobalMaxPooling2D
 from tensorflow.keras.models import Model,Sequential
 from tensorflow.keras.applications import MobileNetV2, ResNet50, MobileNetV3Small
+from tensorflow.keras.applications.densenet import DenseNet121
+from tensorflow.keras.applications.efficientnet import EfficientNetB0
 
 kernel_initializer = 'he_normal'
 activation = "relu"
@@ -409,8 +411,6 @@ def get_modified_cifar10_model4(chs=32):
     model = Model(inputs, output)
     return model
 
-
-
 def get_mobilenetv2(chs=256, input_shape=None, num_classes=0):
     inputs = Input(shape=input_shape)
 
@@ -435,7 +435,77 @@ def get_mobilenetv2(chs=256, input_shape=None, num_classes=0):
 
     return model
 
-    
+def get_mobilenetv3s(chs=256, input_shape=None, num_classes=0):
+    inputs = Input(shape=input_shape)
+
+    # Create mobilenetv3s base model
+    base_model = MobileNetV3Small(
+        weights=None,
+        include_top=False,
+        input_shape=input_shape,
+        pooling = 'avg',
+    )
+
+    # Get the features from the base model
+    layer = base_model(inputs, training = True)
+
+    # Stack additional layers
+    layer = Dense(chs, activation='relu')(layer)
+    layer = Dropout(0.5)(layer)
+    outputs = Dense(num_classes, activation="softmax")(layer)
+
+    # Create the final model
+    model = Model(inputs=inputs, outputs=outputs)
+
+    return model
+
+def get_densenet121(chs=256, input_shape=None, num_classes=0):
+    inputs = Input(shape=input_shape)
+
+    # Create DenseNet121 base model
+    base_model = DenseNet121(
+        weights=None,
+        include_top=False,
+        input_shape=input_shape,
+        pooling = 'avg',
+    )
+
+    # Get the features from the base model
+    layer = base_model(inputs, training = True)
+
+    # Stack additional layers
+    layer = Dense(chs, activation='relu')(layer)
+    layer = Dropout(0.5)(layer)
+    outputs = Dense(num_classes, activation="softmax")(layer)
+
+    # Create the final model
+    model = Model(inputs=inputs, outputs=outputs)
+
+    return model
+
+def get_efficientnetb0(chs=256, input_shape=None, num_classes=0):
+    inputs = Input(shape=input_shape)
+
+    # Create EfficientNetB0 base model
+    base_model = EfficientNetB0(
+        weights=None,
+        include_top=False,
+        input_shape=input_shape,
+        pooling = 'avg',
+    )
+
+    # Get the features from the base model
+    layer = base_model(inputs, training = True)
+
+    # Stack additional layers
+    layer = Dense(chs, activation='relu')(layer)
+    layer = Dropout(0.5)(layer)
+    outputs = Dense(num_classes, activation="softmax")(layer)
+
+    # Create the final model
+    model = Model(inputs=inputs, outputs=outputs)
+
+    return model
     
 def get_resnet50(chs=256, input_shape=None, num_classes=0):
     inputs = Input(shape=input_shape)
@@ -461,29 +531,7 @@ def get_resnet50(chs=256, input_shape=None, num_classes=0):
 
     return model
 
-def get_mobilenetv3s(chs=256, input_shape=None, num_classes=0):
-    inputs = Input(shape=input_shape)
 
-    # Create Resnet50 base model
-    base_model = MobileNetV3Small(
-        weights=None,
-        include_top=False,
-        input_shape=input_shape,
-        pooling = 'avg',
-    )
-
-    # Get the features from the base model
-    layer = base_model(inputs, training = True)
-
-    # Stack additional layers
-    layer = Dense(chs, activation='relu')(layer)
-    layer = Dropout(0.5)(layer)
-    outputs = Dense(num_classes, activation="softmax")(layer)
-
-    # Create the final model
-    model = Model(inputs=inputs, outputs=outputs)
-
-    return model
     
 
 

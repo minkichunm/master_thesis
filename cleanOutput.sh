@@ -1,1 +1,1 @@
-rm -rf *.err *.out
+rm -rf logs/*.err logs/*.out

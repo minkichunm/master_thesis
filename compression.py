@@ -8,6 +8,7 @@ from utils import *
 import pickle
 import json
 from Compressible_Huffman import Huffman
+import tensorflow.compat.v1 as tf1
 
 regularization_loss_results = []
 ce_loss_results = []
@@ -25,7 +26,12 @@ def compress_NN_param(options, x_train, y_train, x_test, y_test, train_generator
 	    
     else:
         print("Start compression")
-		
+    dataset_classes = {
+    "mnist": 10,
+    "cifar": 10,
+    "celeba": 2,
+    "3d": 2
+    }	
     # set parameters for training
     coefficients = options["coefficients"]
     num_epoch = options["epoch"]
@@ -34,7 +40,7 @@ def compress_NN_param(options, x_train, y_train, x_test, y_test, train_generator
     directory = "results/" + options["directory_path"]
     scale_outlier = options["scale_outlier"]
     loss_results = []
-    num_class = 10 # mnist or cifar	
+    num_class = dataset_classes[options["dataset"]]	
     selected_model = options["model"]
     val_accuracy_results = []
     file_size_results = []
@@ -55,7 +61,10 @@ def compress_NN_param(options, x_train, y_train, x_test, y_test, train_generator
     
     # Train the model with the current hyperparameters
     #optimizer = tf.optimizers.Adam(learning_rate=1e-4, beta_1=0.5, beta_2=.95)
-    optimizer = tf.optimizers.Adagrad(learning_rate=1e-4)
+    #optimizer = tf.optimizers.Adadelta(rho=0.9, epsilon=1e-7)
+    #optimizer = tf.optimizers.Adagard(learning_rate=1e-3, epsilon=1e-7)
+    optimizer = tf.optimizers.SGD(learning_rate=0.01)
+    
     # Get the optimizer configuration as a dictionary
     optimizer_config = optimizer.get_config()
 
@@ -66,6 +75,19 @@ def compress_NN_param(options, x_train, y_train, x_test, y_test, train_generator
     print(f"Optimizer: {optimizer_info}")
     
     for count, compressibleNN in enumerate(compressibleNN_list):
+        # Create an optimizer
+        #optimizer = tf.optimizers.SGD(learning_rate=0.01, momentum=0.9, decay=1e-5)
+
+        # Create a learning rate scheduler
+        lr_callback = tf.keras.callbacks.LearningRateScheduler(scheduler)
+        # Get the optimizer configuration as a dictionary
+        #optimizer_config = optimizer.get_config()
+
+        # Convert the dictionary to a formatted string
+        #optimizer_info = ", ".join(f"{key}={value}" for key, value in optimizer_config.items())
+
+        # Print the optimizer information in one line
+        #print(f"Optimizer: {optimizer_info}")
         compressibleNN.compile(optimizer,loss=keras.losses.SparseCategoricalCrossentropy(), metrics=['accuracy'])
 
         if options["load_model"]: # load the saved weights 
@@ -75,9 +97,10 @@ def compress_NN_param(options, x_train, y_train, x_test, y_test, train_generator
                                       save_weights_only=True, mode='max',
                                       monitor="val_accuracy",
                                       save_best_only=True)
-                                      
+                     
+                          
         history = compressibleNN.fit(train_generator, epochs=num_epoch, batch_size=batch_size, steps_per_epoch=steps_per_epoch,
-                                     validation_data=(x_test, y_test), callbacks=[CustomCallback(), checkpoint_callback])
+                                     validation_data=(x_test, y_test), callbacks=[CustomCallback(), checkpoint_callback,lr_callback])
         
         celoss = history.history['loss_cross_entropy'][0]
         regloss = history.history['regularization_loss'][0]
@@ -88,7 +111,7 @@ def compress_NN_param(options, x_train, y_train, x_test, y_test, train_generator
         print(f"{compressibleNN.reg_type} {compressibleNN.regularization_coefficient} done")
         #print(history.history['val_accuracy'])
         #print(history.history.keys())
-    
+        
     # Define the full path to the log file
     reg_filename = os.path.join(directory, "loss_logs.txt")
     ce_filename = os.path.join(directory, "ce_logs.txt")
@@ -105,6 +128,7 @@ def compress_NN_param(options, x_train, y_train, x_test, y_test, train_generator
 
         with open(weights_filename, 'wb') as file:
             pickle.dump(original_weights, file)
+            
 
     # Convert the TensorFlow tensors to normal Python floats and round to 3 decimal places
     precision = 3
