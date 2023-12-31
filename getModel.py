@@ -12,12 +12,13 @@ def get_simplemodel(channels=128):
     
     inputs = Input(shape)
     layer = Flatten()(inputs)
-    layer = Dense(units=channels*2, activation=activation, kernel_initializer=kernel_initializer)(layer)
+    layer = Conv2D(channels * 2, (3, 3), padding='same', kernel_initializer=kernel_initializer)(inputs)
     layer = Dense(units=channels, activation=activation, kernel_initializer=kernel_initializer)(layer)
     output = Dense(10, activation='linear', use_bias=True, kernel_initializer=kernel_initializer)(layer)
 
     model = Model(inputs, output)
     return model
+    
 
 def get_model(chs=128):
     shape=(32, 32, 3)

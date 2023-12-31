@@ -77,7 +77,6 @@ def decompress_NN_param(options, x_train, y_train, x_test, y_test, train_generat
 
         print(f"Model{cnt} Top-1 Accuracy: {top_1_accuracy:.2f}%")
         acc_results.append(f"{top_1_accuracy:.2f}")
-
     
     print("Save accuracy log file")
     # Define the full path to the log file

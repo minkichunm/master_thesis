@@ -55,7 +55,7 @@ def weight(xk, t, nbins):
 def calculate_histogram(variables, min_h, max_h):
     flat_vars = tf.reshape(variables, (-1,1)) 
     scaled_vars = (flat_vars-min_h)*(nbins - 1)/(max_h-min_h)
-    calc_w = calculate_weights(scaled_vars, min_h, max_h)
+    calc_w = calculate_weights(scaled_vars, min_h		, max_h)
     
     return calc_w
 

@@ -5,6 +5,7 @@ from tensorflow.keras.preprocessing.image import load_img, img_to_array
 import tensorflow as tf
 from tensorflow.keras.datasets import mnist, cifar10
 from getModel import *
+from scipy.ndimage import zoom
 
 def write_data_to_file(filename, data_list, step):
     with open(filename, "a") as file:
@@ -30,8 +31,17 @@ def load_dataset(dataset=None, celeba_folder=None, train_samples=None, validatio
     if dataset == "mnist":
         (x_train, y_train), (x_test, y_test) = mnist.load_data()
         
+        # Resize images to (32, 32, 1)
+        x_train_resized = zoom(x_train, (1, 1.1429, 1.1429), order=1)
+        x_test_resized = zoom(x_test, (1, 1.1429, 1.1429), order=1)
+        x_train_resized = np.expand_dims(x_train_resized, axis=-1)
+        x_test_resized = np.expand_dims(x_test_resized, axis=-1)
+        
+        data_generator = tf.keras.preprocessing.image.ImageDataGenerator(width_shift_range=0.1, height_shift_range=0.1, horizontal_flip=True)
+        train_generator = data_generator.flow(x_train_resized, y_train, batch_size)
+       
         steps_per_epoch = x_train.shape[0] // batch_size
-        return x_train, y_train, x_test, y_test, (x_train, y_train), steps_per_epoch
+        return x_train_resized, y_train, x_test_resized, y_test, train_generator, steps_per_epoch
 
     elif dataset == "cifar":
         (x_train, y_train), (x_test, y_test) = cifar10.load_data()
@@ -44,19 +54,28 @@ def load_dataset(dataset=None, celeba_folder=None, train_samples=None, validatio
         height = 218 
         width = 178
         input_shape = (height, width, 3)
+        train_samples = 4000
+        validation_samples = 1000
+        celeba_folder = "celeba_dataset/"
         df = pd.read_csv(celeba_folder+'list_attr_celeba.csv', index_col=0)
         df_partition_data = pd.read_csv(celeba_folder+'list_eval_partition.csv')
         df_partition_data.set_index('image_id', inplace=True)
         df = df_partition_data.join(df['Male'], how='inner')
         x_train, y_train = generate_df(0, 'Male', train_samples, df, celeba_folder)
         steps_per_epoch = x_train.shape[0] // batch_size
-        train_generator = tf.keras.preprocessing.image.ImageDataGenerator(
+        train_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
             rotation_range=30,
             width_shift_range=0.2,
             height_shift_range=0.2,
             shear_range=0.2,
             zoom_range=0.2,
             horizontal_flip=True
+        )
+        train_datagen.fit(x_train)
+
+        train_generator = train_datagen.flow(
+        x_train, y_train,
+        batch_size=batch_size,
         )
         
         x_test, y_test = generate_df(1, 'Male', validation_samples, df, celeba_folder)
@@ -98,7 +117,7 @@ def generate_df(partition, attribute, nsamples, df, celeba_folder):
     images_folder = celeba_folder + 'img_align_celeba/'
     new_df = df[(df['partition'] == partition) & (df[attribute] == 1)].sample(int(nsamples/2))
     new_df = pd.concat([new_df, df[(df['partition'] == partition) & (df[attribute] == -1)].sample(int(nsamples/2))])
-    
+
     # Preprocessing image and setting the target attribute in the appropriate fromat for test and validation data
     if partition!=2:
         X = np.array([load_image(images_folder + file_name) for file_name in new_df.index])

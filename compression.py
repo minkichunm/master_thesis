@@ -30,7 +30,7 @@ def compress_NN_param(options, x_train, y_train, x_test, y_test, train_generator
     "mnist": 10,
     "cifar": 10,
     "celeba": 2,
-    "3d": 2
+    "3d": 1
     }	
     # set parameters for training
     coefficients = options["coefficients"]
@@ -75,19 +75,9 @@ def compress_NN_param(options, x_train, y_train, x_test, y_test, train_generator
     print(f"Optimizer: {optimizer_info}")
     
     for count, compressibleNN in enumerate(compressibleNN_list):
-        # Create an optimizer
-        #optimizer = tf.optimizers.SGD(learning_rate=0.01, momentum=0.9, decay=1e-5)
-
         # Create a learning rate scheduler
-        lr_callback = tf.keras.callbacks.LearningRateScheduler(scheduler)
-        # Get the optimizer configuration as a dictionary
-        #optimizer_config = optimizer.get_config()
-
-        # Convert the dictionary to a formatted string
-        #optimizer_info = ", ".join(f"{key}={value}" for key, value in optimizer_config.items())
-
-        # Print the optimizer information in one line
-        #print(f"Optimizer: {optimizer_info}")
+        #lr_callback = tf.keras.callbacks.LearningRateScheduler(scheduler)
+        
         compressibleNN.compile(optimizer,loss=keras.losses.SparseCategoricalCrossentropy(), metrics=['accuracy'])
 
         if options["load_model"]: # load the saved weights 
@@ -97,10 +87,9 @@ def compress_NN_param(options, x_train, y_train, x_test, y_test, train_generator
                                       save_weights_only=True, mode='max',
                                       monitor="val_accuracy",
                                       save_best_only=True)
-                     
-                          
+             
         history = compressibleNN.fit(train_generator, epochs=num_epoch, batch_size=batch_size, steps_per_epoch=steps_per_epoch,
-                                     validation_data=(x_test, y_test), callbacks=[CustomCallback(), checkpoint_callback,lr_callback])
+                                     validation_data=(x_test, y_test), callbacks=[CustomCallback(), checkpoint_callback])
         
         celoss = history.history['loss_cross_entropy'][0]
         regloss = history.history['regularization_loss'][0]
