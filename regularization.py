@@ -1,6 +1,8 @@
 import tensorflow as tf
 import numpy as np
 from tensorflow import keras
+from scipy.stats import entropy
+from matplotlib import pyplot as plt
 
 nbins = 256
 
@@ -55,17 +57,48 @@ def weight(xk, t, nbins):
 def calculate_histogram(variables, min_h, max_h):
     flat_vars = tf.reshape(variables, (-1,1)) 
     scaled_vars = (flat_vars-min_h)*(nbins - 1)/(max_h-min_h)
-    calc_w = calculate_weights(scaled_vars, min_h		, max_h)
+    calc_w = calculate_weights(scaled_vars, min_h, max_h)
     
     return calc_w
+
+def quantize_weights(variables, pq_nbins=256, scale_outlier=3.0):
+    for variable in variables:
+        min_h, max_h = calculate_histogram_range(variable, scale_outlier)
+        flat_vars = tf.reshape(variable, (-1, 1))
+
+        # Bin centers
+        bin_centers = tf.linspace(min_h, max_h, pq_nbins)
+
+        # Quantize each weight value to the center of its corresponding bin
+        quantized_vars = tf.gather(bin_centers, tf.cast(tf.round((flat_vars - min_h) / (max_h - min_h) * (nbins - 1)), dtype=tf.int32))
+
+        # Reshape back to the original shape
+        quantized_vars = tf.reshape(quantized_vars, variable.shape)
+
+        # Assign quantized values to the variable
+        variable.assign(quantized_vars)
 
 def visualize_histogram_tent(variables):    
     min_h, max_h = calculate_histogram_range(variables, scale = 3.0)
     our_hist = calculate_histogram(variables, min_h, max_h)
 
     np_hist, _ = np.histogram(variables, bins=nbins, range=(min_h.numpy(), max_h.numpy())) 
+    
+    # Calculate entropy
+    entropy1 = entropy(our_hist, base=2)
+    entropy2 = entropy(np_hist, base=2)
 
-    from matplotlib import pyplot as plt
+    print("Entropy of Histogram 1:", entropy1)
+    print("Entropy of Histogram 2:", entropy2)
+        
+    # Compare entropies
+    if entropy1 < entropy2:
+        print("Histogram 1 is more compressed.")
+    elif entropy1 > entropy2:
+        print("Histogram 2 is more compressed.")
+    else:
+        print("Both histograms have similar compression.")
+    
     plt.plot(np_hist, "-b", label="histogram using numpy")
     plt.plot(our_hist, "-r", label="histogram using linear weight (tent function) (Jona et. al.)")
     plt.legend(loc="upper left")
@@ -77,30 +110,3 @@ def visualize_histogram_tent(variables):
 def test_histogram_tent():
     variables = np.random.normal(size=(10000))
     visualize_histogram_tent(variables)
-
-def visualize_histogram_sparsity_comparison(variables):
-    min_h, max_h = calculate_histogram_range(variables, scale=3.0)
-    
-    # Calculate histogram using sparsity
-    our_hist_sparsity = calculate_histogram(variables, min_h, max_h)
-
-    # Calculate histogram using NumPy
-    np_hist, _ = np.histogram(variables, bins=nbins, range=(min_h.numpy(), max_h.numpy()))
-
-    # Calculate sparsity regularization loss
-    sparsity_loss = calc_sparsity_regularization(variables)
-
-    # Visualization
-    from matplotlib import pyplot as plt
-    plt.plot(np_hist, "-b", label="histogram using numpy")
-    plt.plot(our_hist_sparsity, "-r", label="histogram using sparsity (absolute values)")
-    plt.axvline(x=sparsity_loss, color='g', linestyle='--', label="sparsity regularization loss")
-    plt.legend(loc="upper left")
-
-    plt.title("Histogram and Sparsity Comparison between sparsity and Numpy")
-
-    plt.show()
-
-def test_histogram_sparsity_comparison():
-    variables = np.random.normal(size=(10000))
-    visualize_histogram_sparsity_comparison(variables)

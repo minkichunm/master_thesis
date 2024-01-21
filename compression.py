@@ -9,6 +9,7 @@ import pickle
 import json
 from Compressible_Huffman import Huffman
 import tensorflow.compat.v1 as tf1
+from regularization import quantize_weights
 
 regularization_loss_results = []
 ce_loss_results = []
@@ -21,17 +22,19 @@ class CustomCallback(keras.callbacks.Callback):
         accuracy_results.append(logs['accuracy'])  
 
 def compress_NN_param(options, x_train, y_train, x_test, y_test, train_generator, steps_per_epoch):
-    if options["load_model"]: # load the saved weights 
+    # load the saved weights
+    if options["load_model"]: 
         print("Start compression with saved weights")
-	    
     else:
         print("Start compression")
+        
     dataset_classes = {
     "mnist": 10,
     "cifar": 10,
     "celeba": 2,
-    "3d": 1
-    }	
+    "3d": 2
+    }
+    	
     # set parameters for training
     coefficients = options["coefficients"]
     num_epoch = options["epoch"]
@@ -56,14 +59,17 @@ def compress_NN_param(options, x_train, y_train, x_test, y_test, train_generator
     
     # Create a list of models by copying the base model
     for coeff in coefficients:
-        model_instance = CompressibleNN(selected_model(input_shape = x_train.shape[1:], num_classes = num_class), coeff, regularization_type, scale_outlier)
+        if options["dataset"] != '3d':
+            model_instance = CompressibleNN(selected_model(input_shape = x_train.shape[1:], num_classes = num_class), coeff, regularization_type, scale_outlier)
+        else:
+            model_instance = CompressibleNN(get_3d_model(),coeff, regularization_type, scale_outlier)
         compressibleNN_list.append(model_instance)
     
     # Train the model with the current hyperparameters
     #optimizer = tf.optimizers.Adam(learning_rate=1e-4, beta_1=0.5, beta_2=.95)
     #optimizer = tf.optimizers.Adadelta(rho=0.9, epsilon=1e-7)
     #optimizer = tf.optimizers.Adagard(learning_rate=1e-3, epsilon=1e-7)
-    optimizer = tf.optimizers.SGD(learning_rate=0.01)
+    optimizer = tf.optimizers.SGD(learning_rate=0.001)
     
     # Get the optimizer configuration as a dictionary
     optimizer_config = optimizer.get_config()
@@ -80,7 +86,8 @@ def compress_NN_param(options, x_train, y_train, x_test, y_test, train_generator
         
         compressibleNN.compile(optimizer,loss=keras.losses.SparseCategoricalCrossentropy(), metrics=['accuracy'])
 
-        if options["load_model"]: # load the saved weights 
+        # load the saved weights 
+        if options["load_model"]:
             compressibleNN.load_weights(f'{directory}/model_{count}')
         
         checkpoint_callback = ModelCheckpoint(f'{directory}/model_{count}',
@@ -90,6 +97,10 @@ def compress_NN_param(options, x_train, y_train, x_test, y_test, train_generator
              
         history = compressibleNN.fit(train_generator, epochs=num_epoch, batch_size=batch_size, steps_per_epoch=steps_per_epoch,
                                      validation_data=(x_test, y_test), callbacks=[CustomCallback(), checkpoint_callback])
+        
+        # Quantize weights after training
+        if options["post_quantization"]:
+            quantize_weights(compressibleNN.trainable_variables)
         
         celoss = history.history['loss_cross_entropy'][0]
         regloss = history.history['regularization_loss'][0]

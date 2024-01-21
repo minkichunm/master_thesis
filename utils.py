@@ -6,6 +6,11 @@ import tensorflow as tf
 from tensorflow.keras.datasets import mnist, cifar10
 from getModel import *
 from scipy.ndimage import zoom
+import nibabel as nib
+from scipy import ndimage
+import os
+import random
+
 
 def write_data_to_file(filename, data_list, step):
     with open(filename, "a") as file:
@@ -79,9 +84,66 @@ def load_dataset(dataset=None, celeba_folder=None, train_samples=None, validatio
         )
         
         x_test, y_test = generate_df(1, 'Male', validation_samples, df, celeba_folder)
-        num_class = 1
+        
         return x_train, y_train, x_test, y_test, train_generator, steps_per_epoch
     
+    elif dataset == "3d":
+        # Folder "CT-0" consist of CT scans having normal lung tissue,
+        # no CT-signs of viral pneumonia.
+        normal_scan_paths = [
+            os.path.join(os.getcwd(), "MosMedData/CT-0", x)
+            for x in os.listdir("MosMedData/CT-0")
+        ]
+        # Folder "CT-23" consist of CT scans having several ground-glass opacifications,
+        # involvement of lung parenchyma.
+        abnormal_scan_paths = [
+            os.path.join(os.getcwd(), "MosMedData/CT-23", x)
+            for x in os.listdir("MosMedData/CT-23")
+        ]
+
+        print("CT scans with normal lung tissue: " + str(len(normal_scan_paths)))
+        print("CT scans with abnormal lung tissue: " + str(len(abnormal_scan_paths))) 
+        
+        # Read and process the scans.
+        # Each scan is resized across height, width, and depth and rescaled.
+        abnormal_scans = np.array([process_scan(path) for path in abnormal_scan_paths])
+        normal_scans = np.array([process_scan(path) for path in normal_scan_paths])
+
+        # For the CT scans having presence of viral pneumonia
+        # assign 1, for the normal ones assign 0.
+        abnormal_labels = np.array([1 for _ in range(len(abnormal_scans))])
+        normal_labels = np.array([0 for _ in range(len(normal_scans))])
+
+        # Split data in the ratio 70-30 for training and validation.
+        x_train = np.concatenate((abnormal_scans[:70], normal_scans[:70]), axis=0)
+        y_train = np.concatenate((abnormal_labels[:70], normal_labels[:70]), axis=0)
+        x_val = np.concatenate((abnormal_scans[70:], normal_scans[70:]), axis=0)
+        y_val = np.concatenate((abnormal_labels[70:], normal_labels[70:]), axis=0)
+        print(
+            "Number of samples in train and validation are %d and %d."
+            % (x_train.shape[0], x_val.shape[0])
+        )        
+        
+        train_loader = tf.data.Dataset.from_tensor_slices((x_train, y_train))
+        validation_loader = tf.data.Dataset.from_tensor_slices((x_val, y_val))        
+        train_dataset = (
+            train_loader.shuffle(len(x_train))
+            .map(train_preprocessing)
+            .batch(batch_size)
+            .prefetch(2)
+        )
+        # Only rescale.
+        validation_dataset = (
+            validation_loader.shuffle(len(x_val))
+            .map(validation_preprocessing)
+            .batch(batch_size)
+            .prefetch(2)
+        )        
+        steps_per_epoch = x_train.shape[0] // batch_size
+        
+        return None, None, validation_dataset, None, train_dataset, steps_per_epoch
+        
+        
     else:
         raise Exception(f"Error: Invalid dataset choice '{dataset}'. Please choose a valid dataset.")    
     
@@ -91,16 +153,7 @@ def load_model_function(selected_model):
         1: get_mobilenetv3s,
         2: get_densenet121,
         3: get_resnet50,
-        4: get_resnet50,
-        5: get_resnet50,
-        6: get_mobilenetv3s,
-        7: get_modified_cifar10_model,
-        8: get_modified_cifar10_model2,
-        9: get_modified_cifar10_model3,
-        10: get_celeba_temp,
-        11: get_celeba_temp2,
-        12: get_modified_model3,
-        13: get_modified_cifar10_model4,
+        4: get_3d_model,
     }
     try:
         if selected_model in model_functions:
@@ -149,7 +202,89 @@ def scheduler(epoch):
     else:
         return 0.01 * 0.1 * 0.1
 
-def representative_dataset_gen(train_images):
-    for input_value in tf.data.Dataset.from_tensor_slices(train_images).batch(1).take(100):
-    # Model has only one input so each data point has one element.
-        yield [input_value]
+
+def read_nifti_file(filepath):
+    """Read and load volume"""
+    # Read file
+    scan = nib.load(filepath)
+    # Get raw data
+    scan = scan.get_fdata()
+    return scan
+
+
+def normalize(volume):
+    """Normalize the volume"""
+    min = -1000
+    max = 400
+    volume[volume < min] = min
+    volume[volume > max] = max
+    volume = (volume - min) / (max - min)
+    volume = volume.astype("float32")
+    return volume
+
+
+def resize_volume(img):
+    """Resize across z-axis"""
+    # Set the desired depth
+    desired_depth = 64
+    desired_width = 128
+    desired_height = 128
+    # Get current depth
+    current_depth = img.shape[-1]
+    current_width = img.shape[0]
+    current_height = img.shape[1]
+    # Compute depth factor
+    depth = current_depth / desired_depth
+    width = current_width / desired_width
+    height = current_height / desired_height
+    depth_factor = 1 / depth
+    width_factor = 1 / width
+    height_factor = 1 / height
+    # Rotate
+    img = ndimage.rotate(img, 90, reshape=False)
+    # Resize across z-axis
+    img = ndimage.zoom(img, (width_factor, height_factor, depth_factor), order=1)
+    return img
+
+
+def process_scan(path):
+    """Read and resize volume"""
+    # Read scan
+    volume = read_nifti_file(path)
+    # Normalize
+    volume = normalize(volume)
+    # Resize width, height and depth
+    volume = resize_volume(volume)
+    return volume
+    
+@tf.function
+def rotate(volume):
+    """Rotate the volume by a few degrees"""
+
+    def scipy_rotate(volume):
+        # define some rotation angles
+        angles = [-20, -10, -5, 5, 10, 20]
+        # pick angles at random
+        angle = random.choice(angles)
+        # rotate volume
+        volume = ndimage.rotate(volume, angle, reshape=False)
+        volume[volume < 0] = 0
+        volume[volume > 1] = 1
+        return volume
+
+    augmented_volume = tf.numpy_function(scipy_rotate, [volume], tf.float32)
+    return augmented_volume
+
+
+def train_preprocessing(volume, label):
+    """Process training data by rotating and adding a channel."""
+    # Rotate volume
+    volume = rotate(volume)
+    volume = tf.expand_dims(volume, axis=3)
+    return volume, label
+
+
+def validation_preprocessing(volume, label):
+    """Process validation data by only adding a channel."""
+    volume = tf.expand_dims(volume, axis=3)
+    return volume, label

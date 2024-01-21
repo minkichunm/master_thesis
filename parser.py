@@ -11,6 +11,7 @@ def __create_options():
         "scale_outlier": 3,
         "dataset": "cifar",
         "load_model": False, 
+        "post_quantization": False,
     }
 
     p = argparse.ArgumentParser(description='Compressing neural network parameter')
@@ -30,11 +31,12 @@ def __create_options():
                    help='Coefficients for a custom option (default: [1.0])')
     p.add_argument('-b', '--batch_size', type=int,
                    help='Batch size for training (default: 256)')
-    p.add_argument('-so', '--scale_outlier', type=int,
+    p.add_argument('-so', '--scale_outlier', type=float,
                    help='Standard deviation for outlier setting (default: 3)')
     p.add_argument('-ds', '--dataset', type=str,
                    help='Choose dataset "mnist", "cifar","celeba","3d" (default: "cifar")')
     p.add_argument('-L', '--load_model', action='store_true', help='Load a saved model')
+    p.add_argument('-pq', '--post_quantization', action='store_true', help='Quantize weights after training')
               
 
     args = p.parse_args()
@@ -57,6 +59,8 @@ def __create_options():
         options["dataset"] = args.dataset
     if args.load_model:
         options["load_model"] = args.load_model
+    if args.post_quantization:
+        options["post_quantization"] = args.post_quantization
         
     print(options)
 

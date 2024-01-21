@@ -60,11 +60,6 @@ echo /appl/cuda/10.1/samples/bin/x86_64/linux/release/bandwidthTest --device=$MY
 nvidia-smi
 nvidia-smi --query-gpu=memory.used,memory.total,utilization.gpu,temperature.gpu,name --format=csv,noheader,nounits
 
-python3 main.py -dir "celeba_e3" -ds "celeba" -e 200 -m 3 -type entropy -so 3 -coeff 0.0 1.0 10.0
-#python3 main.py -dir "m3test9" -ds "cifar" -e 1000 -m 3 -type entropy -so 3 -coeff 0.0 5.0 50.0
-
-#python3 NN_param_compression_cifar.py  -dir "cifar_new3" -ds "cifar" -e 90 -m 13 -type entropy -so 3 -coeff 0.0 1e-3 1e-2 1e-1 0.5 1.0 5.0 10.0 100.0 1000.0
-#python3 NN_param_compression_cifar.py  -dir "cifar_new4" -ds "cifar" -e 150 -m 13 -type entropy -so 3 -coeff 0.0 1000.0 10000.0 1000000.0 100000000.0
-#python3 NN_param_decompression_cifar.py -dir "cifar_mobilnetv2" -ds "cifar"
+python3 main.py -dir "test" -ds "cifar" -e 3 -m 1 -type entropy -so 3 -coeff 0.0 1.0 
 
 
